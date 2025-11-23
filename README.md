@@ -36,7 +36,8 @@ src/
     usuarios.routes.js
   app.js
   server.js
-.env.example
+.env
+.env.docker
 
 ---
 
