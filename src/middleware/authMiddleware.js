@@ -1,12 +1,20 @@
-// src/middleware/auth.middleware.js
+// ========================================================
+//  Middleware de Autenticación y Autorización (JWT + RBAC)
+// ========================================================
+// - Valida tokens JWT enviados en el header Authorization.
+// - Expone datos del usuario en req.user.
+// - Implementa control de acceso basado en roles.
+// ========================================================
+
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 
 dotenv.config();
 
-// Autenticación: valida token y adjunta datos del usuario a req.user
+// Autenticación: valida el token JWT y adjunta su payload al request.
 export const autenticar = (req, res, next) => {
   const authHeader = req.headers.authorization;
+
   if (!authHeader?.startsWith("Bearer ")) {
     return res.status(401).json({ message: "Token requerido" });
   }
@@ -15,15 +23,14 @@ export const autenticar = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    // decoded: { id_usuario, rol, nombre }
-    req.user = decoded;
+    req.user = decoded; // { id_usuario, rol, nombre }
     next();
   } catch (err) {
     return res.status(401).json({ message: "Token inválido o expirado" });
   }
 };
 
-// Autorización: permite solo ciertos roles
+// Autorización por roles utilizando RBAC simple.
 export const autorizarRoles = (...rolesPermitidos) => {
   return (req, res, next) => {
     if (!req.user || !rolesPermitidos.includes(req.user.rol)) {
@@ -33,6 +40,6 @@ export const autorizarRoles = (...rolesPermitidos) => {
   };
 };
 
-// Alias opcionales por si en algún lugar usas otros nombres
+// Alias de compatibilidad
 export const authMiddleware = autenticar;
 export const requireRole = (rol) => autorizarRoles(rol);

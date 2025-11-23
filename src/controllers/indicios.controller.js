@@ -1,13 +1,28 @@
+// ========================================================
+//  Controlador de Indicios
+//  - Registro de indicios asociados a un expediente
+// ========================================================
+
 import { getConnection, sql } from "../config/db.js";
 
+// POST /api/indicios
+// Crea un indicio asociado a un expediente y técnico autenticado
 export const crearIndicio = async (req, res) => {
-  const { id_expediente, descripcion, color, tamano, peso, ubicacion } = req.body;
-  const id_tecnico = req.user.id_usuario;
+  const { id_expediente, descripcion, color, tamano, peso, ubicacion } =
+    req.body;
+  const id_tecnico = req.user?.id_usuario;
 
-  if (!id_expediente || !descripcion)
+  if (!id_expediente || !descripcion) {
     return res
       .status(400)
       .json({ message: "id_expediente y descripción son requeridos" });
+  }
+
+  if (!id_tecnico) {
+    return res
+      .status(401)
+      .json({ message: "Usuario técnico no autenticado" });
+  }
 
   try {
     const pool = await getConnection();
@@ -22,9 +37,15 @@ export const crearIndicio = async (req, res) => {
       .input("id_tecnico", sql.Int, id_tecnico)
       .execute("sp_crear_indicio");
 
-    res.status(201).json({ id_indicio: result.recordset[0].id_indicio });
+    const id_indicio = result.recordset[0].id_indicio;
+
+    console.log(
+      `🧬 Indicio creado: id=${id_indicio}, expediente=${id_expediente}, tecnico=${id_tecnico}`
+    );
+
+    return res.status(201).json({ id_indicio });
   } catch (err) {
     console.error("Error crearIndicio:", err);
-    res.status(500).json({ message: "Error interno" });
+    return res.status(500).json({ message: "Error interno" });
   }
 };

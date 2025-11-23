@@ -1,5 +1,13 @@
+// ========================================================
+//  Controlador de Reportes
+//  - Obtención de métricas agregadas de expedientes
+// ========================================================
+
 import { getConnection, sql } from "../config/db.js";
 
+// GET /api/reportes
+// Devuelve resumen de expedientes (totales, aprobados, rechazados)
+// con filtros opcionales de fecha y estado
 export const reporteEstadisticas = async (req, res) => {
   const { fecha_inicio, fecha_fin, estado } = req.query;
 
@@ -12,9 +20,10 @@ export const reporteEstadisticas = async (req, res) => {
       .input("estado", sql.NVarChar(20), estado || null)
       .execute("sp_reporte_estadisticas");
 
-  res.json(result.recordset[0]);
+    // Se asume un único registro con los agregados
+    return res.json(result.recordset[0]);
   } catch (err) {
     console.error("Error reporteEstadisticas:", err);
-    res.status(500).json({ message: "Error interno" });
+    return res.status(500).json({ message: "Error interno" });
   }
 };

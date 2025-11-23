@@ -1,7 +1,14 @@
-// src/controllers/expedientes.controller.js
+// ========================================================
+//  Controlador de Expedientes
+//  - Alta de expedientes (técnico)
+//  - Listado con filtro por estado
+//  - Aprobación / rechazo (coordinador)
+// ========================================================
+
 import { getConnection, sql } from "../config/db.js";
 
 // POST /api/expedientes
+// Crea un expediente asociándolo al técnico autenticado
 export const crearExpediente = async (req, res) => {
   const { codigo_expediente } = req.body;
   const id_tecnico = req.user?.id_usuario;
@@ -13,8 +20,6 @@ export const crearExpediente = async (req, res) => {
   }
 
   if (!id_tecnico) {
-    // En teoría no debería pasar si el middleware de auth funciona bien,
-    // pero lo dejamos por seguridad.
     return res
       .status(401)
       .json({ message: "Usuario técnico no autenticado" });
@@ -29,26 +34,30 @@ export const crearExpediente = async (req, res) => {
       .execute("sp_crear_expediente");
 
     const id_expediente = result.recordset[0].id_expediente;
+
+    console.log(
+      `📁 Expediente creado: id=${id_expediente}, codigo=${codigo_expediente}, tecnico=${id_tecnico}`
+    );
+
     return res.status(201).json({ id_expediente, codigo_expediente });
   } catch (err) {
     console.error("Error crearExpediente:", err);
 
-    // Detectar violación de UNIQUE KEY (código de expediente duplicado)
+    // Manejo específico para violación de UNIQUE KEY (código duplicado)
     const errorNumber = err.number || err.originalError?.number;
     const mensajeSql = err.originalError?.message || err.message || "";
 
     if (
       errorNumber === 2627 || // violación UNIQUE en SQL Server
-      mensajeSql.includes("UQ__Expedien") // nombre de la constraint en tu tabla
+      mensajeSql.includes("UQ__Expedien") // constraint de la tabla Expedientes
     ) {
       return res.status(400).json({
         message:
           "Ya existe un expediente con ese código. " +
-          "Aunque esté aprobado, rechazado o eliminado, ese número de expediente ya fue utilizado.",
+          "Aunque esté aprobado, rechazado o eliminado, ese número de expediente ya fue utilizado."
       });
     }
 
-    // Cualquier otro error
     return res
       .status(500)
       .json({ message: "Error interno al crear el expediente" });
@@ -56,6 +65,7 @@ export const crearExpediente = async (req, res) => {
 };
 
 // GET /api/expedientes
+// Lista expedientes, opcionalmente filtrados por estado
 export const listarExpedientes = async (req, res) => {
   const { estado } = req.query;
 
@@ -76,8 +86,10 @@ export const listarExpedientes = async (req, res) => {
 };
 
 // POST /api/expedientes/:id/aprobar
+// Marca un expediente como aprobado
 export const aprobarExpediente = async (req, res) => {
   const { id } = req.params;
+
   try {
     const pool = await getConnection();
     await pool
@@ -95,6 +107,7 @@ export const aprobarExpediente = async (req, res) => {
 };
 
 // POST /api/expedientes/:id/rechazar
+// Marca un expediente como rechazado y registra justificación
 export const rechazarExpediente = async (req, res) => {
   const { id } = req.params;
   const { justificacion } = req.body;

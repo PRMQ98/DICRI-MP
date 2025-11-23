@@ -1,7 +1,15 @@
+// ========================================================
+//  Controlador de Usuarios
+//  - ABM de usuarios (coordinador)
+//  - Cambio de estado (activo/inactivo)
+//  - Actualización de contraseña
+// ========================================================
+
 import bcrypt from "bcryptjs";
 import { getConnection, sql } from "../config/db.js";
 
 // GET /api/usuarios
+// Lista todos los usuarios registrados
 export const listarUsuarios = async (req, res) => {
   try {
     const pool = await getConnection();
@@ -14,12 +22,15 @@ export const listarUsuarios = async (req, res) => {
 };
 
 // POST /api/usuarios
+// Crea un usuario nuevo (hash de contraseña incluido)
 export const crearUsuario = async (req, res) => {
   try {
     const { nombre, usuario, password, rol } = req.body;
 
     if (!nombre || !usuario || !password || !rol) {
-      return res.status(400).json({ message: "Todos los campos son obligatorios" });
+      return res
+        .status(400)
+        .json({ message: "Todos los campos son obligatorios" });
     }
 
     if (!["tecnico", "coordinador"].includes(rol)) {
@@ -28,7 +39,7 @@ export const crearUsuario = async (req, res) => {
 
     const pool = await getConnection();
 
-    // Verificar si ya existe usuario
+    // Verificar unicidad de usuario
     const existe = await pool
       .request()
       .input("usuario", sql.NVarChar(50), usuario)
@@ -50,6 +61,8 @@ export const crearUsuario = async (req, res) => {
 
     const id_usuario = result.recordset[0].id_usuario;
 
+    console.log(`👤 Usuario creado: id=${id_usuario}, usuario=${usuario}, rol=${rol}`);
+
     return res.status(201).json({
       id_usuario,
       nombre,
@@ -64,13 +77,16 @@ export const crearUsuario = async (req, res) => {
 };
 
 // PUT /api/usuarios/:id
+// Actualiza datos básicos de usuario (sin cambiar contraseña)
 export const actualizarUsuario = async (req, res) => {
   try {
     const { id } = req.params;
     const { nombre, usuario, rol } = req.body;
 
     if (!nombre || !usuario || !rol) {
-      return res.status(400).json({ message: "Todos los campos son obligatorios" });
+      return res
+        .status(400)
+        .json({ message: "Todos los campos son obligatorios" });
     }
 
     if (!["tecnico", "coordinador"].includes(rol)) {
@@ -87,6 +103,8 @@ export const actualizarUsuario = async (req, res) => {
       .input("rol", sql.NVarChar(20), rol)
       .execute("sp_actualizar_usuario");
 
+    console.log(`🔧 Usuario actualizado: id=${id}`);
+
     return res.json({ message: "Usuario actualizado correctamente" });
   } catch (err) {
     console.error("Error actualizarUsuario:", err);
@@ -95,15 +113,15 @@ export const actualizarUsuario = async (req, res) => {
 };
 
 // PATCH /api/usuarios/:id/estado
+// Activa / desactiva usuario, evitando que el usuario actual se desactive a sí mismo
 export const cambiarEstadoUsuario = async (req, res) => {
   try {
     const { id } = req.params;
     const { activo } = req.body;
 
     const idInt = parseInt(id, 10);
-    const usuarioToken = req.user; // ajusta a como guardas el usuario en el middleware
+    const usuarioToken = req.user;
 
-    // Regla: el coordinador NO puede desactivarse a sí mismo
     if (usuarioToken && usuarioToken.id_usuario === idInt) {
       return res
         .status(400)
@@ -118,6 +136,10 @@ export const cambiarEstadoUsuario = async (req, res) => {
       .input("activo", sql.Bit, activo ? 1 : 0)
       .execute("sp_cambiar_estado_usuario");
 
+    console.log(
+      `⚙️ Estado de usuario actualizado: id=${idInt}, activo=${!!activo}`
+    );
+
     return res.json({ message: "Estado actualizado correctamente" });
   } catch (err) {
     console.error("Error cambiarEstadoUsuario:", err);
@@ -126,13 +148,16 @@ export const cambiarEstadoUsuario = async (req, res) => {
 };
 
 // PATCH /api/usuarios/:id/password
+// Actualiza la contraseña de un usuario (hash con bcrypt)
 export const actualizarPasswordUsuario = async (req, res) => {
   try {
     const { id } = req.params;
     const { password } = req.body;
 
     if (!password) {
-      return res.status(400).json({ message: "La contraseña es obligatoria" });
+      return res
+        .status(400)
+        .json({ message: "La contraseña es obligatoria" });
     }
 
     const hash = await bcrypt.hash(password, 10);
@@ -144,21 +169,25 @@ export const actualizarPasswordUsuario = async (req, res) => {
       .input("password_hash", sql.NVarChar(255), hash)
       .execute("sp_actualizar_password_usuario");
 
+    console.log(`🔑 Password actualizada para usuario id=${id}`);
+
     return res.json({ message: "Contraseña actualizada correctamente" });
   } catch (err) {
     console.error("Error actualizarPasswordUsuario:", err);
-    return res.status(500).json({ message: "Error al actualizar contraseña" });
+    return res
+      .status(500)
+      .json({ message: "Error al actualizar contraseña" });
   }
 };
 
 // DELETE /api/usuarios/:id
+// Elimina usuario, evitando que el usuario actual se elimine a sí mismo
 export const eliminarUsuario = async (req, res) => {
   try {
     const { id } = req.params;
     const idInt = parseInt(id, 10);
-    const usuarioToken = req.user; // ajusta según tu middleware
+    const usuarioToken = req.user;
 
-    // Regla: el coordinador NO puede eliminarse a sí mismo
     if (usuarioToken && usuarioToken.id_usuario === idInt) {
       return res
         .status(400)
@@ -171,6 +200,8 @@ export const eliminarUsuario = async (req, res) => {
       .request()
       .input("id_usuario", sql.Int, idInt)
       .execute("sp_eliminar_usuario");
+
+    console.log(`🗑️ Usuario eliminado: id=${idInt}`);
 
     return res.json({ message: "Usuario eliminado correctamente" });
   } catch (err) {
