@@ -1,42 +1,109 @@
-# DICRI Evidencias – API y Frontend (Prueba Técnica)
+# DICRI Evidencias – Backend (API REST)
 
-Sistema de gestión de **expedientes e indicios** para la DICRI, con control de acceso por roles (**técnico** y **coordinador**), autenticación JWT y reportes básicos de estadísticas.
-
-Pensado como una prueba técnica de **desarrollador full-stack** con énfasis en:
-- Diseño de API REST limpia
-- Separación de responsabilidades (controladores, rutas, middleware, config)
-- Autenticación y autorización por rol
-- Consumo desde un frontend en React con un diseño sencillo pero profesional
+API REST para la gestión de expedientes e indicios del sistema DICRI.  
+Incluye autenticación con JWT, autorización por roles y comunicación con SQL Server mediante stored procedures.
 
 ---
 
 ## 1. Tecnologías utilizadas
-
-### Backend
-- **Node.js** + **Express**
-- **SQL Server** (`mssql`)
-- **JWT** (`jsonwebtoken`) para autenticación
-- **bcryptjs** para hash de contraseñas
-- **dotenv** para configuración por variables de entorno
-- **CORS** para permitir peticiones desde el frontend
-
-### Frontend (proyecto React asociado)
-- **React** + **Vite**
-- **Bootstrap 5** (CDN/CSS) para layout base
-- **CSS personalizado** (`styles/styles.css`) para identidad visual DICRI
-- Rutas con **react-router-dom**
-
-> ⚠️ Este README describe principalmente la API. El frontend se conecta a la API bajo `/api/...`.
+- Node.js + Express
+- SQL Server (mssql)
+- JSON Web Tokens (jsonwebtoken)
+- bcryptjs
+- dotenv
+- CORS
 
 ---
 
-## 2. Arquitectura general
+## 2. Arquitectura del proyecto
+src/
+  config/
+    db.js
+    jwt.js
+  controllers/
+    auth.controller.js
+    expedientes.controller.js
+    indicios.controller.js
+    reportes.controller.js
+    usuarios.controller.js
+  middleware/
+    authMiddleware.js
+  routes/
+    auth.routes.js
+    expedientes.routes.js
+    indicios.routes.js
+    reportes.routes.js
+    usuarios.routes.js
+  app.js
+  server.js
+.env.example
 
-### Flujo backend
+---
 
-1. El usuario inicia sesión en `/api/auth/login`.
-2. El backend valida credenciales con **SQL Server** (`sp_login_usuario`) y verifica el hash de contraseña.
-3. Se genera un **JWT** con `id_usuario`, `nombre` y `rol`.
-4. El frontend guarda el token en `localStorage` y lo envía en el header:
-   ```http
-   Authorization: Bearer <token>
+## 3. Instalación
+
+### 1. Clonar repositorio
+git clone (https://github.com/PRMQ98/DICRI-MP.git)
+cd backend
+
+### 2. Instalar dependencias
+npm install
+
+### 3. Crear archivo .env
+SQL_USER=
+SQL_PASSWORD=
+SQL_SERVER=
+SQL_DATABASE=
+SQL_PORT=1433
+JWT_SECRET=
+PORT=3000
+
+### 4. Iniciar servidor
+npm run dev
+
+Modo producción:
+npm start
+
+---
+
+## 4. Endpoints principales
+
+### Autenticación
+POST /api/auth/login — Público
+
+### Expedientes
+POST /api/expedientes — técnico  
+GET /api/expedientes — técnico / coordinador  
+POST /api/expedientes/:id/aprobar — coordinador  
+POST /api/expedientes/:id/rechazar — coordinador  
+
+### Indicios
+POST /api/indicios — técnico
+
+### Reportes
+GET /api/reportes — coordinador
+
+### Usuarios
+GET /api/usuarios — coordinador  
+POST /api/usuarios — coordinador  
+PUT /api/usuarios/:id — coordinador  
+PATCH /api/usuarios/:id/estado — coordinador  
+PATCH /api/usuarios/:id/password — coordinador  
+DELETE /api/usuarios/:id — coordinador  
+
+---
+
+## 5. Flujo general
+1. Usuario inicia sesión.  
+2. Backend valida credenciales y genera token JWT.  
+3. Frontend envía token en header Authorization.  
+4. Middleware valida autenticación y rol.  
+5. Toda interacción con BD se hace mediante stored procedures.
+
+---
+
+## 6. Seguridad aplicada
+- Hash seguro de contraseñas  
+- JWT con expiración  
+- Autorización por rol  
+- Uso de stored procedures para evitar SQL Injection  
